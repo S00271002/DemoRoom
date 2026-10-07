@@ -6,4 +6,5 @@ export interface Demo
     description: string;
     tempo: number;
     key: string;
+    currentVersionId: number | null;
 }
