@@ -2,39 +2,60 @@ import { Router } from "express";
 import {demos, getDemoById, createDemo} from "../services/demoService.js";
 import {getVersionsByDemoId, createDemoVersion, getVersionById } from "../services/demoVersionService.js";
 import { createComment, getCommentsByVersionId } from "../services/commentService.js";
+import { audioUpload } from "../middleware/audioUpload.js";
+import { unlink } from "node:fs/promises";
 const router = Router();
 
 router.get("/", (req, res) => {
     res.json(demos);
 });
 
-router.post("/", (req, res) => {
-  const { title, description, tempo, key, audioPath } = req.body;
+router.post("/", audioUpload.single("audio"), async (req, res) => {
+    
+    const { title, description, key } = req.body;
+    const tempo = Number(req.body.tempo);
 
-  const errors: string[] = [];
+    const errors: string[] = [];
 
-  if (typeof title !== "string" || title.trim() === "") {
-    errors.push("A title is required");
-  }
+    if(!req.file){
+        errors.push("Audio file is required");
+    }
 
-  if (typeof description !== "string" || description.trim() === "") {
-    errors.push("A description is required");
-  }
 
-  if (typeof tempo !== "number" || !Number.isFinite(tempo) || tempo <= 0) {
-    errors.push("A valid tempo is required");
-  }
+    if (typeof title !== "string" || title.trim() === "") {
+        errors.push("A title is required");
+    }
 
-  if (typeof key !== "string") {
-    errors.push("Key must be a string");
-  }
+    if (typeof description !== "string" || description.trim() === "") {
+        errors.push("A description is required");
+    }
 
-  if(errors.length > 0) {
-    return res.status(400).json({
-      message: "Demo was not created",
-      errors
-    });
-  }
+    if (typeof tempo !== "number" || !Number.isFinite(tempo) || tempo <= 0) {
+        errors.push("A valid tempo is required");
+    }
+
+    if (typeof key !== "string") {
+        errors.push("Key must be a string");
+    }
+
+    if (errors.length > 0) {
+    if (req.file) {
+        await unlink(req.file.path);
+        }
+
+        return res.status(400).json({
+            message: "Demo was not created",
+            errors
+        });
+    }
+
+    if (!req.file) {
+        return res.status(400).json({
+            message: "An MP3 recording is required"
+        });
+    }
+
+    const audioPath = req.file.path;
 
     const demo = createDemo(title, description, tempo, key);
 
@@ -71,21 +92,26 @@ router.get("/:id/versions", (req, res) => {
 });
 
 
-router.post("/:id/versions", (req, res) => {
+router.post("/:id/versions", audioUpload.single("audio"), async (req, res) => {
     
     const demo = getDemoById(Number(req.params.id));
 
     if (!demo) {
+        if (req.file) {
+            await unlink(req.file.path);
+        }
+
         return res.status(404).json({
             message: "Demo not found"
         });
     }
 
-    const { audioPath, changeNote } = req.body;
+    const { changeNote } = req.body;
+
     const errors: string[] = [];
 
-    if (typeof audioPath !== "string" || audioPath.trim() === "") {
-        errors.push("Audio path must be a non-empty string");
+    if(!req.file){
+        errors.push("Audio file is required");
     }
 
     if (typeof changeNote !== "string" || changeNote.trim() === "") {
@@ -93,11 +119,23 @@ router.post("/:id/versions", (req, res) => {
     }      
 
     if (errors.length > 0) {
+        if (req.file) {
+            await unlink(req.file.path);
+            }
+
+            return res.status(400).json({
+                message: "Version was not added",
+                errors
+            });
+    }
+
+    if (!req.file) {
         return res.status(400).json({
-            message: "Version was not added",
-            errors
+            message: "An MP3 recording is required"
         });
     }
+
+    const audioPath = req.file.path;
 
     const demoVersion = createDemoVersion(demo.id, audioPath, changeNote);
 
@@ -197,6 +235,21 @@ router.get("/:id/versions/:versionId", (req, res) => {
     }
 
     res.json(version);
+});
+
+router.get("/:id/versions/:versionId/audio", (req, res) => {
+    const demoId = Number(req.params.id);
+    const versionId = Number(req.params.versionId);
+
+    const version = getVersionById(demoId, versionId);
+
+    if (!version) {
+        return res.status(404).json({
+            message: "Version not found"
+        });
+    }
+
+    res.sendFile(version.audioPath);
 });
 
 router.post("/:id/versions/:versionId/comments", (req, res) => {
