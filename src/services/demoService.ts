@@ -4,24 +4,21 @@ export const demos: Demo[] = [];
 
 let nextId = 1;
 
-export function getNextDemoId(): number {
-    return nextId++;
-}
-
-export function findDemoById(id: number): Demo | undefined {
+export function getDemoById(id: number): Demo | undefined {
+    
     return demos.find((demo) => demo.id === id);
 }
 
-export function createDemo(title: string, description: string, author: string, tempo: number, key: string): Demo {
+export function createDemo(title: string, description: string, tempo: number, key: string): Demo {
     const demo: Demo = 
     {
         id: nextId++,
         title: title.trim(),
-        author: author.trim(),
+        userId: 1,
         description: typeof description === "string" ? description : "",
         tempo: typeof tempo === "number" && tempo > 0 ? tempo : 120,
         key: typeof key === "string" ? key.trim() : "C",
-        currentVersionId: null,
+        currentVersionId: 1,
     }
     demos.push(demo);
     return demo;

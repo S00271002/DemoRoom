@@ -4,5 +4,5 @@ export interface DemoVersion {
     versionNumber: number;
     audioPath: string;
     uploadedAt: string;
-    changeNote?: string;
+    changeNote: string;
 }
