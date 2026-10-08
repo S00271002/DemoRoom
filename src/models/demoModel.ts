@@ -18,7 +18,17 @@ const demoSchema = new Schema({
     key: {
         type: String,
         trim: true
+    },
+    userId: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true
+    },
+    currentVersionId: {
+        type: Schema.Types.ObjectId,
+        ref: "DemoVersion",
+        default: null
     }
-});
+}, { timestamps: true });
 
 export const DemoModel = model("Demo", demoSchema);

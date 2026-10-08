@@ -1,41 +1,48 @@
-import type { DemoVersion } from "../models/demoVersion.js";
+import { DemoVersionModel } from "../models/demoVersionModel.js";
 import { getDemoById } from "./demoService.js";
 
-const demoVersions: DemoVersion[] = [];
-let nextVersionId = 1;
-
-export function getVersionsByDemoId(demoId: number): DemoVersion[] {
-    return demoVersions.filter((version) => version.demoId === demoId);
+export async function getVersionsByDemoId(demoId: string) {
+    return await DemoVersionModel.find({ demoId })
 }
 
-export function getVersionById(demoId: number, versionId: number): DemoVersion | undefined {
-    return demoVersions.find(
-        (version) =>
-            version.demoId === demoId &&
-            version.id === versionId
-    );
+export async function getVersionById(
+    demoId: string,
+    versionNumber: number
+) {
+    return await DemoVersionModel.findOne({
+        demoId,
+        versionNumber
+    });
 }
 
-export function createDemoVersion(demoId: number, audioPath: string, changeNote: string): DemoVersion {
- 
-    const demo = getDemoById(demoId);
+export async function createDemoVersion(
+    demoId: string,
+    audioPath: string,
+    changeNote: string
+) {
+    const demo = await getDemoById(demoId);
+
     if (!demo) {
         throw new Error("Demo not found");
-        }   
+    }
 
-    const existingVersions = getVersionsByDemoId(demoId);
+    const latestVersion = await DemoVersionModel
+        .findOne({ demoId })
+        .sort({ versionNumber: -1 });
 
-    const demoVersion: DemoVersion = {
-            id: nextVersionId++,
-            demoId: demoId,
-            versionNumber: existingVersions.length + 1,
-            audioPath: audioPath.trim(),
-            uploadedAt: new Date().toISOString(),
-            changeNote: changeNote.trim()
-        };
-    
-        demoVersions.push(demoVersion);
-        demo.currentVersionId = demoVersion.id;
+    const demoVersion = new DemoVersionModel({
+        demoId,
+        versionNumber: (latestVersion?.versionNumber ?? 0) + 1,
+        audioPath,
+        changeNote
+    });
+
+    await demoVersion.save();
+
+    demo.currentVersionId = demoVersion._id;
+    await demo.save();
 
     return demoVersion;
 }
+
+    

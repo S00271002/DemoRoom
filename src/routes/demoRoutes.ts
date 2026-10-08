@@ -1,26 +1,27 @@
 import { Router } from "express";
-import {demos, getDemoById, createDemo} from "../services/demoService.js";
+import {getDemoById, createDemo, getAllDemos} from "../services/demoService.js";
 import {getVersionsByDemoId, createDemoVersion, getVersionById } from "../services/demoVersionService.js";
 import { createComment, getCommentsByVersionId } from "../services/commentService.js";
 import { audioUpload } from "../middleware/audioUpload.js";
 import { unlink } from "node:fs/promises";
+
 const router = Router();
 
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
+    const demos = await getAllDemos();
     res.json(demos);
 });
-
 router.post("/", audioUpload.single("audio"), async (req, res) => {
     
     const { title, description, key } = req.body;
-    const tempo = Number(req.body.tempo);
+    const tempo = req.body.tempo ? Number(req.body.tempo) : undefined;    
+    const userId = process.env.DEV_USER_ID;
 
     const errors: string[] = [];
 
     if(!req.file){
         errors.push("Audio file is required");
     }
-
 
     if (typeof title !== "string" || title.trim() === "") {
         errors.push("A title is required");
@@ -30,12 +31,12 @@ router.post("/", audioUpload.single("audio"), async (req, res) => {
         errors.push("A description is required");
     }
 
-    if (typeof tempo !== "number" || !Number.isFinite(tempo) || tempo <= 0) {
-        errors.push("A valid tempo is required");
+    if (tempo !== undefined && (!Number.isFinite(tempo) || tempo < 1)) {
+        errors.push("Tempo is invalid");
     }
 
-    if (typeof key !== "string") {
-        errors.push("Key must be a string");
+    if (key !== undefined && typeof key !== "string") {
+        errors.push("Key must be text");
     }
 
     if (errors.length > 0) {
@@ -55,17 +56,23 @@ router.post("/", audioUpload.single("audio"), async (req, res) => {
         });
     }
 
+    if (!userId) {
+        await unlink(req.file.path);
+
+        return res.status(500).json({
+            message: "Development user is not configured"
+        });
+    }
+
     const audioPath = req.file.path;
-
-    const demo = createDemo(title, description, tempo, key);
-
-    const firstVersion = createDemoVersion(demo.id, audioPath, "Initial version");
+    const demo = await createDemo(title, description, userId, tempo, key);
+    const firstVersion = await createDemoVersion(demo._id.toString(), audioPath, "Initial version");
 
     res.status(201).json({demo, firstVersion});
 });
 
-router.get("/:id", (req, res) => {
-  const demo = getDemoById(Number(req.params.id));
+router.get("/:id", async (req, res) => {
+  const demo = await getDemoById(req.params.id);
 
   if (!demo) {
     return res.status(404).json({
@@ -76,9 +83,8 @@ router.get("/:id", (req, res) => {
   res.json(demo);
 });
 
-router.get("/:id/versions", (req, res) => {
-
-    const demo = getDemoById(Number(req.params.id));
+router.patch("/:id", async (req, res) => {
+    const demo = await getDemoById(req.params.id);
 
     if (!demo) {
         return res.status(404).json({
@@ -86,7 +92,63 @@ router.get("/:id/versions", (req, res) => {
         });
     }
 
-    const versions = getVersionsByDemoId(demo.id);
+    const { title, description, tempo, key } = req.body;
+    const errors: string[] = [];
+
+    if (title !== undefined && (typeof title !== "string" || title.trim() === "")) {
+        errors.push("Title must be a non-empty string");
+    }
+
+    if (description !== undefined && typeof description !== "string") {
+        errors.push("Description must be a string");
+    }
+
+    if (tempo !== undefined && (typeof tempo !== "number" || !Number.isFinite(tempo) || tempo <= 0)) {
+        errors.push("Tempo must be a positive number");
+    }
+
+    if (key !== undefined && (typeof key !== "string" || key.trim() === "")) {
+        errors.push("Key must be a non-empty string");
+    }
+
+    if (errors.length > 0) {
+        return res.status(400).json({
+            message: "Demo was not updated",
+            errors
+        });
+    }
+
+    if (title !== undefined) {
+        demo.title = title.trim();
+    }
+
+    if (description !== undefined) {
+        demo.description = description;
+    }
+
+    if (tempo !== undefined && tempo > 0) {
+        demo.tempo = tempo;
+    }
+
+    if (key !== undefined) {
+        demo.key = key.trim();
+    }
+
+    await demo.save();
+    res.json(demo);
+});
+
+router.get("/:id/versions", async (req, res) => {
+
+    const demo = await getDemoById(req.params.id);
+
+    if (!demo) {
+        return res.status(404).json({
+            message: "Demo not found"
+        });
+    }
+
+    const versions = await getVersionsByDemoId(demo._id.toString());
 
     res.json(versions);
 });
@@ -94,20 +156,19 @@ router.get("/:id/versions", (req, res) => {
 
 router.post("/:id/versions", audioUpload.single("audio"), async (req, res) => {
     
-    const demo = getDemoById(Number(req.params.id));
+    const demoId = req.params.id;
 
-    if (!demo) {
+    if (typeof demoId !== "string") {
         if (req.file) {
             await unlink(req.file.path);
         }
 
-        return res.status(404).json({
-            message: "Demo not found"
+        return res.status(400).json({
+            message: "Invalid demo ID"
         });
     }
 
     const { changeNote } = req.body;
-
     const errors: string[] = [];
 
     if(!req.file){
@@ -136,89 +197,18 @@ router.post("/:id/versions", audioUpload.single("audio"), async (req, res) => {
     }
 
     const audioPath = req.file.path;
-
-    const demoVersion = createDemoVersion(demo.id, audioPath, changeNote);
+    const demoVersion = await createDemoVersion(demoId, audioPath, changeNote);
 
     res.status(201).json(demoVersion);
 });
     
-router.patch("/:id", (req, res) => {
-    const demo = getDemoById(Number(req.params.id));
-
-    if (!demo) {
-        return res.status(404).json({
-            message: "Demo not found"
-        });
-    }
-
-    const { title, description, tempo, key } = req.body;
-
-    const errors: string[] = [];
-
-    if (
-        title !== undefined &&
-        (typeof title !== "string" || title.trim() === "")
-    ) {
-        errors.push("Title must be a non-empty string");
-    }
-
-    if (
-        description !== undefined &&
-        typeof description !== "string"
-    ) {
-        errors.push("Description must be a string");
-    }
-
-    if (
-        tempo !== undefined &&
-        (
-            typeof tempo !== "number" ||
-            !Number.isFinite(tempo) ||
-            tempo <= 0
-        )
-    ) {
-        errors.push("Tempo must be a positive number");
-    }
-
-    if (
-        key !== undefined &&
-        (typeof key !== "string" || key.trim() === "")
-    ) {
-        errors.push("Key must be a non-empty string");
-    }
-
-    if (errors.length > 0) {
-        return res.status(400).json({
-            message: "Demo was not updated",
-            errors
-        });
-    }
-
-    if (title !== undefined) {
-        demo.title = title.trim();
-    }
-
-    if (description !== undefined) {
-        demo.description = description;
-    }
-
-    if (tempo !== undefined) {
-        demo.tempo = tempo;
-    }
-
-    if (key !== undefined) {
-        demo.key = key.trim();
-    }
 
 
-    res.json(demo);
-});
-
-router.get("/:id/versions/:versionId", (req, res) => {
-    const demoId = Number(req.params.id);
+router.get("/:id/versions/:versionId", async (req, res) => {
+    const demoId = req.params.id;
     const versionId = Number(req.params.versionId);
 
-    const demo = getDemoById(demoId);
+    const demo = await getDemoById(demoId);
 
     if (!demo) {
         return res.status(404).json({
@@ -226,7 +216,7 @@ router.get("/:id/versions/:versionId", (req, res) => {
         });
     }
 
-    const version = getVersionById(demoId, versionId);
+    const version = await getVersionById(demoId, versionId);
 
     if (!version) {
         return res.status(404).json({
@@ -237,11 +227,11 @@ router.get("/:id/versions/:versionId", (req, res) => {
     res.json(version);
 });
 
-router.get("/:id/versions/:versionId/audio", (req, res) => {
-    const demoId = Number(req.params.id);
+router.get("/:id/versions/:versionId/audio", async (req, res) => {
+    const demoId = req.params.id;
     const versionId = Number(req.params.versionId);
 
-    const version = getVersionById(demoId, versionId);
+    const version = await getVersionById(demoId, versionId);
 
     if (!version) {
         return res.status(404).json({
@@ -252,12 +242,12 @@ router.get("/:id/versions/:versionId/audio", (req, res) => {
     res.sendFile(version.audioPath);
 });
 
-router.post("/:id/versions/:versionId/comments", (req, res) => {
+router.post("/:id/versions/:versionId/comments", async (req, res) => {
 
     const versionId = Number(req.params.versionId);
-    const demoId = Number(req.params.id);
+    const demoId = req.params.id;
 
-    const version = getVersionById(demoId, versionId);
+    const version = await getVersionById(demoId, versionId);
 
         if (!version) {
         return res.status(404).json({
@@ -285,12 +275,12 @@ router.post("/:id/versions/:versionId/comments", (req, res) => {
     res.status(201).json(comment);
 });
 
-router.get("/:id/versions/:versionId/comments", (req, res) => {
+router.get("/:id/versions/:versionId/comments", async (req, res) => {
 
     const versionId = Number(req.params.versionId);
-    const demoId = Number(req.params.id);
+    const demoId = req.params.id;
 
-    const version = getVersionById(demoId, versionId);
+    const version = await getVersionById(demoId, versionId);
 
         if (!version) {
             return res.status(404).json({
@@ -298,7 +288,7 @@ router.get("/:id/versions/:versionId/comments", (req, res) => {
             });
         }
 
-    const comments = getCommentsByVersionId(versionId);
+    const comments = await getCommentsByVersionId(versionId);
 
     res.json(comments);
 });

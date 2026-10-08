@@ -1,25 +1,27 @@
-import type { Demo } from "../models/demo.js";
+import { DemoModel } from "../models/demoModel.js";
 
-export const demos: Demo[] = [];
-
-let nextId = 1;
-
-export function getDemoById(id: number): Demo | undefined {
-    
-    return demos.find((demo) => demo.id === id);
+export async function getAllDemos() {
+    return await DemoModel.find();
 }
 
-export function createDemo(title: string, description: string, tempo: number, key: string): Demo {
-    const demo: Demo = 
-    {
-        id: nextId++,
-        title: title.trim(),
-        userId: 1,
-        description: typeof description === "string" ? description : "",
-        tempo: typeof tempo === "number" && tempo > 0 ? tempo : 120,
-        key: typeof key === "string" ? key.trim() : "C",
-        currentVersionId: 1,
+export async function getDemoById(id: string) {
+    return await DemoModel.findById(id);
+}
+
+export async function createDemo(title: string, description: string, userId: string, tempo?: number, key?: string) {
+    const demo = new DemoModel({
+        title,
+        description,
+        userId
+    });
+
+    if (tempo !== undefined) {
+        demo.tempo = tempo;
     }
-    demos.push(demo);
-    return demo;
+
+    if (key !== undefined && key.trim() !== "") {
+        demo.key = key.trim();
+    }
+
+    return await demo.save();
 }
