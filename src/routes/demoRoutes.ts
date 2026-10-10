@@ -3,6 +3,7 @@ import {getDemoById, createDemo, getAllDemos} from "../services/demoService.js";
 import { createDemoVersion } from "../services/demoVersionService.js";
 import { audioUpload } from "../middleware/audioUpload.js";
 import { unlink } from "node:fs/promises";
+import { validateDemoId } from "../middleware/validateDemoId.js";
 
 const router = Router();
 
@@ -10,6 +11,7 @@ router.get("/", async (req, res) => {
     const demos = await getAllDemos();
     res.json(demos);
 });
+
 router.post("/", audioUpload.single("audio"), async (req, res) => {
     
     const { title, description, key } = req.body;
@@ -70,7 +72,7 @@ router.post("/", audioUpload.single("audio"), async (req, res) => {
     res.status(201).json({demo, firstVersion});
 });
 
-router.get("/:id", async (req, res) => {
+router.get<{id: string}>("/:id", validateDemoId, async (req, res) => {
   const demo = await getDemoById(req.params.id);
 
   if (!demo) {
@@ -82,7 +84,7 @@ router.get("/:id", async (req, res) => {
   res.json(demo);
 });
 
-router.patch("/:id", async (req, res) => {
+router.patch<{id: string}>("/:id", validateDemoId, async (req, res) => {
     const demo = await getDemoById(req.params.id);
 
     if (!demo) {

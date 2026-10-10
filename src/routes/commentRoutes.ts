@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { getVersionById } from "../services/demoVersionService.js";
 import { createComment, getCommentsByVersionId } from "../services/commentService.js";
+import { validateVersionNumber } from "../middleware/validateVersionNumber.js";
+import { validateDemoId } from "../middleware/validateDemoId.js";
 
 const router = Router();
 
-router.post("/:id/versions/:versionId/comments", async (req, res) => {
+router.post<{id: string, versionId: string}>("/:id/versions/:versionId/comments", validateDemoId, validateVersionNumber, async (req, res) => {
 
     const versionId = Number(req.params.versionId);
     const demoId = req.params.id;
@@ -32,12 +34,24 @@ router.post("/:id/versions/:versionId/comments", async (req, res) => {
         });
     }
 
-    const comment = createComment(versionId, text);
+    const userId = process.env.DEV_USER_ID;
+
+    if (!userId) {
+        return res.status(500).json({
+            message: "Development user is not configured"
+        });
+    }
+
+    const comment = await createComment(
+        version._id.toString(),
+        userId,
+        text
+    );
 
     res.status(201).json(comment);
 });
 
-router.get("/:id/versions/:versionId/comments", async (req, res) => {
+router.get<{id: string, versionId: string}>("/:id/versions/:versionId/comments", validateDemoId, validateVersionNumber, async (req, res) => {
 
     const versionId = Number(req.params.versionId);
     const demoId = req.params.id;
@@ -50,7 +64,7 @@ router.get("/:id/versions/:versionId/comments", async (req, res) => {
             });
         }
 
-    const comments = await getCommentsByVersionId(versionId);
+    const comments = await getCommentsByVersionId(version._id.toString());
 
     res.json(comments);
 });

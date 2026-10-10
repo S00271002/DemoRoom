@@ -5,3 +5,10 @@ export async function hashPassword(password: string): Promise<string> {
         type: argon2.argon2id
     });
 }
+
+export async function verifyPassword(
+    passwordHash: string,
+    password: string
+): Promise<boolean> {
+    return await argon2.verify(passwordHash, password);
+}

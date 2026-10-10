@@ -3,10 +3,12 @@ import {getDemoById} from "../services/demoService.js";
 import {getVersionsByDemoId, createDemoVersion, getVersionById } from "../services/demoVersionService.js";
 import { audioUpload } from "../middleware/audioUpload.js";
 import { unlink } from "node:fs/promises";
+import { validateDemoId } from "../middleware/validateDemoId.js";
+import { validateVersionNumber } from "../middleware/validateVersionNumber.js";
 
 const router = Router();
 
-router.get("/:id/versions", async (req, res) => {
+router.get<{id: string}>("/:id/versions", validateDemoId, async (req, res) => {
 
     const demo = await getDemoById(req.params.id);
 
@@ -22,7 +24,7 @@ router.get("/:id/versions", async (req, res) => {
 });
 
 
-router.post("/:id/versions", audioUpload.single("audio"), async (req, res) => {
+router.post<{id: string}>("/:id/versions", validateDemoId, audioUpload.single("audio"), async (req, res) => {
     
     const demoId = req.params.id;
 
@@ -85,7 +87,7 @@ router.post("/:id/versions", audioUpload.single("audio"), async (req, res) => {
     
 
 
-router.get("/:id/versions/:versionId", async (req, res) => {
+router.get<{id: string, versionId: string}>("/:id/versions/:versionId", validateDemoId, validateVersionNumber, async (req, res) => {
     const demoId = req.params.id;
     const versionId = Number(req.params.versionId);
 
@@ -108,7 +110,7 @@ router.get("/:id/versions/:versionId", async (req, res) => {
     res.json(version);
 });
 
-router.get("/:id/versions/:versionId/audio", async (req, res) => {
+router.get<{id: string, versionId: string}>("/:id/versions/:versionId/audio", validateDemoId, validateVersionNumber, async (req, res) => {
     const demoId = req.params.id;
     const versionId = Number(req.params.versionId);
 
