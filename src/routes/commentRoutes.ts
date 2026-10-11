@@ -4,9 +4,9 @@ import { createComment, getCommentsByVersionId } from "../services/commentServic
 import { validateVersionNumber } from "../middleware/validateVersionNumber.js";
 import { validateDemoId } from "../middleware/validateDemoId.js";
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
-router.post<{id: string, versionId: string}>("/:id/versions/:versionId/comments", validateDemoId, validateVersionNumber, async (req, res) => {
+router.post<{id: string, versionId: string}>("/", validateDemoId, validateVersionNumber, async (req, res) => {
 
     const versionId = Number(req.params.versionId);
     const demoId = req.params.id;
@@ -51,7 +51,7 @@ router.post<{id: string, versionId: string}>("/:id/versions/:versionId/comments"
     res.status(201).json(comment);
 });
 
-router.get<{id: string, versionId: string}>("/:id/versions/:versionId/comments", validateDemoId, validateVersionNumber, async (req, res) => {
+router.get<{id: string, versionId: string}>("/", validateDemoId, validateVersionNumber, async (req, res) => {
 
     const versionId = Number(req.params.versionId);
     const demoId = req.params.id;

@@ -3,7 +3,7 @@ import { createUser, getUserByEmail } from "../services/userService.js";
 import { verifyPassword } from "../services/passwordService.js";
 import {getUserForLogin} from "../services/userService.js";
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 router.post("/register", async (req, res) => {
     const { username, email, password } = req.body ?? {};
@@ -41,8 +41,6 @@ router.post("/register", async (req, res) => {
 
     res.status(201).json(user);
 });
-
-export default router;
 
 
 router.post("/login", async (req, res) => {
@@ -84,3 +82,5 @@ router.post("/login", async (req, res) => {
         email: user.email
     });
 });
+
+export default router;

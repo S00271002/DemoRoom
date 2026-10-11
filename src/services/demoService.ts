@@ -8,11 +8,12 @@ export async function getDemoById(id: string) {
     return await DemoModel.findById(id);
 }
 
-export async function createDemo(title: string, description: string, userId: string, tempo?: number, key?: string) {
+export async function createDemo(title: string, description: string, userId: string, bandId: string, tempo?: number, key?: string) {
     const demo = new DemoModel({
         title,
         description,
-        userId
+        userId,
+        bandId,
     });
 
     if (tempo !== undefined) {

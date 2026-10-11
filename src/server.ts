@@ -6,6 +6,7 @@ import userRoutes from "./routes/userRoutes.js";
 import "dotenv/config";
 import { connectDatabase } from "./config/database.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import bandRoutes from "./routes/bandRoutes.js";
 
 const app = express();
 app.use(express.json());
@@ -16,9 +17,10 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/demos", demoRoutes);
-app.use("/api/demos", versionRoutes);
-app.use("/api/demos", commentRoutes);
+app.use("/api/demos/:id/versions", versionRoutes);
+app.use("/api/demos/:id/versions/:versionId/comments", commentRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/bands", bandRoutes);
 
 app.use(errorHandler);
 

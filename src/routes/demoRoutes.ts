@@ -5,7 +5,7 @@ import { audioUpload } from "../middleware/audioUpload.js";
 import { unlink } from "node:fs/promises";
 import { validateDemoId } from "../middleware/validateDemoId.js";
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 router.get("/", async (req, res) => {
     const demos = await getAllDemos();
@@ -14,7 +14,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", audioUpload.single("audio"), async (req, res) => {
     
-    const { title, description, key } = req.body;
+    const { title, description, key, bandId } = req.body ?? {};
     const tempo = req.body.tempo ? Number(req.body.tempo) : undefined;    
     const userId = process.env.DEV_USER_ID;
 
@@ -66,10 +66,12 @@ router.post("/", audioUpload.single("audio"), async (req, res) => {
     }
 
     const audioPath = req.file.path;
-    const demo = await createDemo(title, description, userId, tempo, key);
+    const demo = await createDemo(title, description, userId, bandId, tempo, key);
     const firstVersion = await createDemoVersion(demo._id.toString(), audioPath, "Initial version");
 
-    res.status(201).json({demo, firstVersion});
+    const updatedDemo = await getDemoById(demo._id.toString());
+
+    res.status(201).json({demo: updatedDemo, firstVersion});
 });
 
 router.get<{id: string}>("/:id", validateDemoId, async (req, res) => {
@@ -93,7 +95,8 @@ router.patch<{id: string}>("/:id", validateDemoId, async (req, res) => {
         });
     }
 
-    const { title, description, tempo, key } = req.body;
+    const { title, description, tempo, key } = req.body ?? {};
+    
     const errors: string[] = [];
 
     if (title !== undefined && (typeof title !== "string" || title.trim() === "")) {
@@ -104,7 +107,7 @@ router.patch<{id: string}>("/:id", validateDemoId, async (req, res) => {
         errors.push("Description must be a non-empty string");
     }
 
-    if (tempo !== undefined && (typeof tempo !== "number" || !Number.isFinite(tempo) || tempo <= 0)) {
+    if (tempo !== undefined && (typeof tempo !== "number" || !Number.isFinite(tempo) || tempo < 1)) {
         errors.push("Tempo must be a positive number");
     }
 

@@ -11,6 +11,11 @@ const demoSchema = new Schema({
         required: true,
         trim: true
     },
+    bandId: {
+    type: Schema.Types.ObjectId,
+    ref: "Band",
+    required: true
+    },
     tempo: {
         type: Number,
         min: 1
