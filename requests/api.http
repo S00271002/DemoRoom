@@ -1,8 +1,3 @@
-# Install the VS Code REST Client extension and select "Send Request".
-# Keep npm start running in a terminal. Replace both MP3 paths below.
-# The binary upload paths are real editable examples, NOT included files.
-# Run createBand and createDemo first; named response references fill later IDs.
-# A second click on createBand makes another band.
 @baseUrl = http://localhost:3000
 @missingId = 000000000000000000000000
 @bandId = {{createBand.response.body.$._id}}
