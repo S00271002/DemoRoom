@@ -2,7 +2,7 @@ import { DemoVersionModel } from "../models/demoVersionModel.js";
 import { getDemoById } from "./demoService.js";
 
 export async function getVersionsByDemoId(demoId: string) {
-    return await DemoVersionModel.find({ demoId })
+    return await DemoVersionModel.find({ demoId }).sort({versionNumber:1})
 }
 
 export async function getVersionById(
