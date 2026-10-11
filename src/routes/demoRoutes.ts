@@ -1,11 +1,23 @@
 import { Router } from "express";
-import {getDemoById, createDemo, getAllDemos} from "../services/demoService.js";
+import { createDemo, deleteDemo, getAllDemos, getDemoById } from "../services/demoService.js";
 import { createDemoVersion } from "../services/demoVersionService.js";
+import { getBandById } from "../services/bandService.js";
 import { audioUpload } from "../middleware/audioUpload.js";
 import { unlink } from "node:fs/promises";
 import { validateDemoId } from "../middleware/validateDemoId.js";
+import { demoDetailsSchema, demoPatchSchema } from "../validation/demoSchemas.js";
 
 const router = Router({ mergeParams: true });
+
+async function removeUpload(audioPath?: string) {
+    if (!audioPath) return;
+
+    try {
+        await unlink(audioPath);
+    } catch (error) {
+        console.error("Could not remove uploaded audio");
+    }
+}
 
 router.get("/", async (req, res) => {
     const demos = await getAllDemos();
@@ -13,133 +25,109 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", audioUpload.single("audio"), async (req, res) => {
-    
-    const { title, description, key, bandId } = req.body ?? {};
-    const tempo = req.body.tempo ? Number(req.body.tempo) : undefined;    
+    const body = req.body ?? {};
+    const result = demoDetailsSchema.safeParse({
+        ...body,
+        tempo: body.tempo ? Number(body.tempo) : undefined
+    });
+
+    if (!result.success || !req.file) {
+        await removeUpload(req.file?.path);
+        return res.status(400).json({
+            message: "Demo details and an MP3 recording are required",
+            errors: result.success ? [] : result.error.issues
+        });
+    }
+
     const userId = process.env.DEV_USER_ID;
-
-    const errors: string[] = [];
-
-    if(!req.file){
-        errors.push("Audio file is required");
+    if (!userId) {
+        await removeUpload(req.file.path);
+        return res.status(500).json({message: "Development user is not configured"});
     }
 
-    if (typeof title !== "string" || title.trim() === "") {
-        errors.push("A title is required");
-    }
+    const { title, description, bandId, tempo, key } = result.data;
+    let createdDemoId: string | undefined;
 
-    if (typeof description !== "string" || description.trim() === "") {
-        errors.push("A description is required");
-    }
-
-    if (tempo !== undefined && (!Number.isFinite(tempo) || tempo < 1)) {
-        errors.push("Tempo is invalid");
-    }
-
-    if (key !== undefined && typeof key !== "string") {
-        errors.push("Key must be text");
-    }
-
-    if (errors.length > 0) {
-    if (req.file) {
-        await unlink(req.file.path);
+    try {
+        const band = await getBandById(bandId);
+        if (!band) {
+            await removeUpload(req.file.path);
+            return res.status(404).json({message: "Band not found"});
         }
 
-        return res.status(400).json({
-            message: "Demo was not created",
-            errors
-        });
+        if (!band.memberIds.some(memberId => memberId.toString() === userId)) {
+            await removeUpload(req.file.path);
+            return res.status(403).json({message: "You must be a member of this band"});
+        }
+
+        const demo = await createDemo(title, description, userId, bandId, tempo, key);
+        createdDemoId = demo._id.toString();
+        const firstVersion = await createDemoVersion(createdDemoId, req.file.path, "Initial version");
+        const updatedDemo = await getDemoById(createdDemoId);
+
+        res.status(201).json({demo: updatedDemo, firstVersion});
+    } catch (error) {
+        if (createdDemoId) {
+            try {
+                await deleteDemo(createdDemoId);
+            } catch (cleanupError) {
+                console.error("Could not clean up incomplete demo");
+            }
+        }
+        await removeUpload(req.file.path);
+        throw error;
     }
-
-    if (!req.file) {
-        return res.status(400).json({
-            message: "An MP3 recording is required"
-        });
-    }
-
-    if (!userId) {
-        await unlink(req.file.path);
-
-        return res.status(500).json({
-            message: "Development user is not configured"
-        });
-    }
-
-    const audioPath = req.file.path;
-    const demo = await createDemo(title, description, userId, bandId, tempo, key);
-    const firstVersion = await createDemoVersion(demo._id.toString(), audioPath, "Initial version");
-
-    const updatedDemo = await getDemoById(demo._id.toString());
-
-    res.status(201).json({demo: updatedDemo, firstVersion});
 });
 
 router.get<{id: string}>("/:id", validateDemoId, async (req, res) => {
-  const demo = await getDemoById(req.params.id);
+    const demo = await getDemoById(req.params.id);
+    if (!demo) {
+        return res.status(404).json({message: "Demo not found"});
+    }
+    res.json(demo);
+});
 
-  if (!demo) {
-    return res.status(404).json({
-      message: "Demo not found"
-    });
-  }
+router.put<{id: string}>("/:id", validateDemoId, async (req, res) => {
+    const result = demoDetailsSchema.omit({bandId: true}).safeParse(req.body);
+    if (!result.success) {
+        return res.status(400).json({message: "Invalid demo details", errors: result.error.issues});
+    }
 
-  res.json(demo);
+    const demo = await getDemoById(req.params.id);
+    if (!demo) {
+        return res.status(404).json({message: "Demo not found"});
+    }
+
+    demo.title = result.data.title;
+    demo.description = result.data.description;
+    demo.set("tempo", result.data.tempo);
+    demo.set("key", result.data.key);
+    await demo.save();
+    res.json(demo);
 });
 
 router.patch<{id: string}>("/:id", validateDemoId, async (req, res) => {
+    const result = demoPatchSchema.safeParse(req.body);
+    if (!result.success) {
+        return res.status(400).json({message: "Invalid demo changes", errors: result.error.issues});
+    }
+
     const demo = await getDemoById(req.params.id);
-
     if (!demo) {
-        return res.status(404).json({
-            message: "Demo not found"
-        });
+        return res.status(404).json({message: "Demo not found"});
     }
 
-    const { title, description, tempo, key } = req.body ?? {};
-    
-    const errors: string[] = [];
-
-    if (title !== undefined && (typeof title !== "string" || title.trim() === "")) {
-        errors.push("Title must be a non-empty string");
-    }
-
-    if (description !== undefined && (typeof description !== "string" || description.trim() === "")) {
-        errors.push("Description must be a non-empty string");
-    }
-
-    if (tempo !== undefined && (typeof tempo !== "number" || !Number.isFinite(tempo) || tempo < 1)) {
-        errors.push("Tempo must be a positive number");
-    }
-
-    if (key !== undefined && (typeof key !== "string" || key.trim() === "")) {
-        errors.push("Key must be a non-empty string");
-    }
-
-    if (errors.length > 0) {
-        return res.status(400).json({
-            message: "Demo was not updated",
-            errors
-        });
-    }
-
-    if (title !== undefined) {
-        demo.title = title.trim();
-    }
-
-    if (description !== undefined) {
-        demo.description = description;
-    }
-
-    if (tempo !== undefined && tempo >= 0) {
-        demo.tempo = tempo;
-    }
-
-    if (key !== undefined) {
-        demo.key = key.trim();
-    }
-
+    demo.set(result.data);
     await demo.save();
     res.json(demo);
+});
+
+router.delete<{id: string}>("/:id", validateDemoId, async (req, res) => {
+    const deleted = await deleteDemo(req.params.id);
+    if (!deleted) {
+        return res.status(404).json({message: "Demo not found"});
+    }
+    res.status(204).send();
 });
 
 export default router;

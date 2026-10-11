@@ -1,0 +1,177 @@
+@baseUrl = http://localhost:3000
+@missingId = 000000000000000000000000
+@bandId = {{createBand.response.body.$._id}}
+@demoId = {{createDemo.response.body.$.demo._id}}
+
+### Setup: create a band for the development user (201)
+# @name createBand
+POST {{baseUrl}}/api/bands
+Content-Type: application/json
+
+{"name":"Deadline Test Band"}
+
+### Video 1: POST correct demo data (201)
+# @name createDemo
+POST {{baseUrl}}/api/demos
+Content-Type: multipart/form-data; boundary=DemoRoomBoundary
+
+--DemoRoomBoundary
+Content-Disposition: form-data; name="title"
+
+Submission Demo
+--DemoRoomBoundary
+Content-Disposition: form-data; name="description"
+
+First draft for the API demonstration
+--DemoRoomBoundary
+Content-Disposition: form-data; name="bandId"
+
+{{bandId}}
+--DemoRoomBoundary
+Content-Disposition: form-data; name="tempo"
+
+120
+--DemoRoomBoundary
+Content-Disposition: form-data; name="key"
+
+Am
+--DemoRoomBoundary
+Content-Disposition: form-data; name="audio"; filename="rc.mp3"
+Content-Type: audio/mpeg
+
+< C:/Users/woodw/Music/rc.mp3
+--DemoRoomBoundary--
+
+### Video 2: POST invalid demo data (400: blank title)
+POST {{baseUrl}}/api/demos
+Content-Type: multipart/form-data; boundary=DemoRoomBoundary
+
+--DemoRoomBoundary
+Content-Disposition: form-data; name="title"
+
+
+--DemoRoomBoundary
+Content-Disposition: form-data; name="description"
+
+Invalid title test
+--DemoRoomBoundary
+Content-Disposition: form-data; name="bandId"
+
+{{bandId}}
+--DemoRoomBoundary
+Content-Disposition: form-data; name="audio"; filename="rc.mp3"
+Content-Type: audio/mpeg
+
+< C:/Users/woodw/Music/rc.mp3
+--DemoRoomBoundary--
+
+### Video 3: GET all demos (200)
+GET {{baseUrl}}/api/demos
+
+### Video 4: GET existing demo (200)
+GET {{baseUrl}}/api/demos/{{demoId}}
+
+### Video 5: GET missing demo with valid ID format (404)
+GET {{baseUrl}}/api/demos/{{missingId}}
+
+### Video 8: PUT valid replacement metadata (200)
+PUT {{baseUrl}}/api/demos/{{demoId}}
+Content-Type: application/json
+
+{"title":"Updated Submission Demo","description":"Updated draft","tempo":125,"key":"Am"}
+
+### Video 9: PUT missing resource (404)
+PUT {{baseUrl}}/api/demos/{{missingId}}
+Content-Type: application/json
+
+{"title":"Missing demo","description":"Valid details"}
+
+### Video 10: PUT invalid metadata (400)
+PUT {{baseUrl}}/api/demos/{{demoId}}
+Content-Type: application/json
+
+{"title":"","description":"Invalid tempo test","tempo":0}
+
+### Extra: PATCH selected fields (200)
+PATCH {{baseUrl}}/api/demos/{{demoId}}
+Content-Type: application/json
+
+{"description":"Changed using PATCH"}
+
+### Extra: malformed demo ID (400)
+GET {{baseUrl}}/api/demos/abc
+
+### Extra: versions (200)
+GET {{baseUrl}}/api/demos/{{demoId}}/versions
+
+### Extra: upload version 2 (201)
+POST {{baseUrl}}/api/demos/{{demoId}}/versions
+Content-Type: multipart/form-data; boundary=DemoRoomBoundary
+
+--DemoRoomBoundary
+Content-Disposition: form-data; name="changeNote"
+
+Added a chorus
+--DemoRoomBoundary
+Content-Disposition: form-data; name="audio"; filename="revision.mp3"
+Content-Type: audio/mpeg
+
+< C:/Users/woodw/Music/rc.mp3
+--DemoRoomBoundary--
+
+### Extra: version 2 information (200 after revision upload)
+GET {{baseUrl}}/api/demos/{{demoId}}/versions/2
+
+### Extra: invalid version number (400)
+GET {{baseUrl}}/api/demos/{{demoId}}/versions/0
+
+### Extra: listen to original recording (200 audio)
+# Open this URL in a browser for its built-in audio player.
+GET {{baseUrl}}/api/demos/{{demoId}}/versions/1/audio
+
+### Extra: comment on original recording (201)
+POST {{baseUrl}}/api/demos/{{demoId}}/versions/1/comments
+Content-Type: application/json
+
+{"text":"I like this original guitar part"}
+
+### Extra: invalid comment (400)
+POST {{baseUrl}}/api/demos/{{demoId}}/versions/1/comments
+Content-Type: application/json
+
+{"text":""}
+
+### Extra: original recording's comments (200)
+GET {{baseUrl}}/api/demos/{{demoId}}/versions/1/comments
+
+### Extra: revision's comments are separate (200)
+GET {{baseUrl}}/api/demos/{{demoId}}/versions/2/comments
+
+### Extra: list development user's bands (200)
+GET {{baseUrl}}/api/bands
+
+### Extra: register test account (201 first time, 409 if repeated)
+POST {{baseUrl}}/api/users/register
+Content-Type: application/json
+
+{"username":"SubmissionTester","email":"submissiontester@example.com","password":"A-long-test-password-123!"}
+
+### Extra: valid credential check (200)
+POST {{baseUrl}}/api/users/login
+Content-Type: application/json
+
+{"email":"submissiontester@example.com","password":"A-long-test-password-123!"}
+
+### Extra: wrong password (401)
+POST {{baseUrl}}/api/users/login
+Content-Type: application/json
+
+{"email":"submissiontester@example.com","password":"incorrect"}
+
+### Video 6: DELETE existing demo (204) - RUN LAST
+# This removes this demonstration demo, its recordings and its comments.
+# Create a separate sample afterwards and leave it for the marker.
+DELETE {{baseUrl}}/api/demos/{{demoId}}
+
+### Video 7: DELETE the same demo again (404)
+DELETE {{baseUrl}}/api/demos/{{demoId}}

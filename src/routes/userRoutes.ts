@@ -1,34 +1,21 @@
+import { registrationSchema, loginSchema } from "../validation/demoSchemas.js";
 import { Router } from "express";
-import { createUser, getUserByEmail } from "../services/userService.js";
+import { createUser, getUserByEmail, getUserForLogin } from "../services/userService.js";
 import { verifyPassword } from "../services/passwordService.js";
-import {getUserForLogin} from "../services/userService.js";
 
 const router = Router({ mergeParams: true });
 
 router.post("/register", async (req, res) => {
-    const { username, email, password } = req.body ?? {};
+    const result = registrationSchema.safeParse(req.body);
 
-    if (typeof username !== "string" || username.trim() === "") {
+    if (!result.success) {
         return res.status(400).json({
-            message: "A username is required"
+            message: "Invalid registration",
+            errors: result.error.issues
         });
     }
 
-    if (
-        typeof email !== "string" ||
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
-    ) {
-        return res.status(400).json({
-            message: "A valid email is required"
-        });
-    }
-
-    if (typeof password !== "string" || password.length < 15) {
-        return res.status(400).json({
-            message: "Password must contain at least 15 characters"
-        });
-    }
-
+    const { username, email, password } = result.data;
     const existingUser = await getUserByEmail(email);
 
     if (existingUser) {
@@ -38,25 +25,20 @@ router.post("/register", async (req, res) => {
     }
 
     const user = await createUser(username, email, password);
-
     res.status(201).json(user);
 });
 
-
 router.post("/login", async (req, res) => {
-    const { email, password } = req.body ?? {};
+    const result = loginSchema.safeParse(req.body);
 
-    if (
-        typeof email !== "string" ||
-        email.trim() === "" ||
-        typeof password !== "string" ||
-        password === ""
-    ) {
+    if (!result.success) {
         return res.status(400).json({
-            message: "Email and password are required"
+            message: "Email and password are required",
+            errors: result.error.issues
         });
     }
 
+    const { email, password } = result.data;
     const user = await getUserForLogin(email);
 
     if (!user) {
@@ -65,10 +47,7 @@ router.post("/login", async (req, res) => {
         });
     }
 
-    const passwordMatches = await verifyPassword(
-        user.passwordHash,
-        password
-    );
+    const passwordMatches = await verifyPassword(user.passwordHash, password);
 
     if (!passwordMatches) {
         return res.status(401).json({

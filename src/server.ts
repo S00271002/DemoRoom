@@ -1,43 +1,17 @@
-import express from "express";
-import demoRoutes from "./routes/demoRoutes.js";
-import versionRoutes from "./routes/versionRoutes.js";
-import commentRoutes from "./routes/commentRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
 import "dotenv/config";
+import app from "./app.js";
 import { connectDatabase } from "./config/database.js";
-import { errorHandler } from "./middleware/errorHandler.js";
-import bandRoutes from "./routes/bandRoutes.js";
 
-const app = express();
-app.use(express.json());
-const port = 3000;
-
-app.get("/", (req, res) => {
-  res.send("DemoRoom server is running");
-});
-
-app.use("/api/demos", demoRoutes);
-app.use("/api/demos/:id/versions", versionRoutes);
-app.use("/api/demos/:id/versions/:versionId/comments", commentRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/bands", bandRoutes);
-
-app.use(errorHandler);
-
-async function startServer(): Promise<void> {
+async function startServer() {
     try {
         await connectDatabase();
-
-        app.listen(port, () => {
-            console.log(`DemoRoom is running at http://localhost:${port}`);
+        app.listen(3000, () => {
+            console.log("DemoRoom is running at http://localhost:3000");
         });
     } catch (error) {
-        if (error instanceof Error) {
-            console.error("Startup error type:", error.name);
-        }
-
-    process.exitCode = 1;
-}
+        console.error("Startup failed:", error instanceof Error ? error.name : "Unknown error");
+        process.exitCode = 1;
+    }
 }
 
 startServer();
