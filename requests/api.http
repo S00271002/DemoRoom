@@ -73,7 +73,7 @@ GET {{baseUrl}}/api/demos/{{demoId}}
 ### 5.	GET request on an individual resource which fails. (404)
 GET {{baseUrl}}/api/demos/{{missingId}}
 
-### 6. 8.	PUT request on an individual resource which succeeds. (200)
+### 8.	PUT request on an individual resource which succeeds. (200)
 PUT {{baseUrl}}/api/demos/{{demoId}}
 Content-Type: application/json
 

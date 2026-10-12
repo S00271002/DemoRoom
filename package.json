@@ -31,5 +31,9 @@
     "supertest": "^7.3.1",
     "typescript": "^7.0.2",
     "vitest": "^5.0.3"
+  },
+  "allowScripts": {
+    "@scarf/scarf@1.4.0": true,
+    "argon2@0.45.1": true
   }
 }
