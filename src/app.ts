@@ -8,9 +8,11 @@ import userRoutes from "./routes/userRoutes.js";
 import "dotenv/config";
 import { errorHandler } from "./middleware/errorHandler.js";
 import bandRoutes from "./routes/bandRoutes.js";
+import cors from "cors";
 
 const app = express();
 app.use(express.json());
+app.use(cors({ origin: 'http://localhost:4200' }));
 
 app.get("/", (req, res) => {
     res.send("DemoRoom server is running");
