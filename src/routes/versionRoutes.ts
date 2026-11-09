@@ -9,6 +9,9 @@ import { validateVersionNumber } from "../middleware/validateVersionNumber.js";
 
 const router = Router({ mergeParams: true });
 
+// base route is "/api/versions"
+
+//gets all versions for a specific demo
 router.get<{ id: string }>("/", validateDemoId, async (req, res) => {
     const demo = await getDemoById(req.params.id);
 
@@ -22,6 +25,7 @@ router.get<{ id: string }>("/", validateDemoId, async (req, res) => {
     res.json(versions);
 });
 
+//creates a new version for a specific demo
 router.post<{ id: string }>("/", validateDemoId, audioUpload.single("audio"), async (req, res) => {
     const demoId = req.params.id;
 
@@ -67,6 +71,7 @@ router.post<{ id: string }>("/", validateDemoId, audioUpload.single("audio"), as
     res.status(201).json(demoVersion);
 });
 
+//gets a specific version of a demo by its version number
 router.get<{ id: string, versionId: string }>("/:versionId", validateDemoId, validateVersionNumber, async (req, res) => {
     const demoId = req.params.id;
     const versionId = Number(req.params.versionId);
@@ -89,6 +94,7 @@ router.get<{ id: string, versionId: string }>("/:versionId", validateDemoId, val
     res.json(version);
 });
 
+//gets the audio file for a specific version of a demo
 router.get<{ id: string, versionId: string }>("/:versionId/audio", validateDemoId, validateVersionNumber, async (req, res) => {
     const demoId = req.params.id;
     const versionId = Number(req.params.versionId);

@@ -12,7 +12,7 @@ import cors from "cors";
 
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: 'http://localhost:4200' }));
+app.use(cors({ origin: 'http://localhost:4200' })); //this is the origin of my front end 
 
 app.get("/", (req, res) => {
     res.send("DemoRoom server is running");

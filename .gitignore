@@ -2,4 +2,5 @@
 /dist/
 /uploads/
 .env
+.vs/
 

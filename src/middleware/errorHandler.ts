@@ -2,6 +2,7 @@ import type { ErrorRequestHandler } from "express";
 import mongoose from "mongoose";
 import multer from "multer";
 
+//gets the error and returns a HTTP status code and response message based on the type of error
 export const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
     if (res.headersSent) {
         next(error);

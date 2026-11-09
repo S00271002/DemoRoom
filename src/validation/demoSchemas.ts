@@ -11,11 +11,11 @@ export const demoDetailsSchema = z.object({
 });
 
 export const demoPatchSchema = demoDetailsSchema
-    .omit({bandId: true})
-    .partial()
+    .omit({bandId: true}) //doesnt check for bandId since it shouldn't be changed
+    .partial() //makes all fields optional since not all fields will be provided 
     .refine(value => Object.keys(value).length > 0, "At least one field is required");
 
-export const versionSchema = z.object({
+export const versionSchema = z.object({ 
     changeNote: z.string().trim().min(1).max(2000)
 });
 
@@ -27,9 +27,10 @@ export const bandSchema = z.object({
     name: z.string().trim().min(1).max(200)
 });
 
-const emailSchema = z.string().trim().toLowerCase().pipe(z.email());
+//validates that a string is a valid email address, and trims whitespace and converts to lowercase
+const emailSchema = z.string().trim().toLowerCase().pipe(z.email()); //
 
-export const registrationSchema = z.object({
+export const registrationSchema = z.object({ 
     username: z.string().trim().min(1).max(100),
     email: emailSchema,
     password: z.string().min(15).max(256)

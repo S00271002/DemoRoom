@@ -4,6 +4,9 @@ import { createBand, getBandsByUserId } from "../services/bandService.js";
 
 const router = Router({ mergeParams: true });
 
+// base route is "/api/bands"
+
+//creates a new band - only for dev user right now
 router.post("/", async (req, res) => {
     const result = bandSchema.safeParse(req.body);
 
@@ -27,6 +30,7 @@ router.post("/", async (req, res) => {
     res.status(201).json(band);
 });
 
+//gets all bands for the dev user - only for dev user right now
 router.get("/", async (req, res) => {
     const userId = process.env.DEV_USER_ID;
 

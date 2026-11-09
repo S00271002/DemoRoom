@@ -4,6 +4,7 @@ import { connectDatabase } from "../config/database.js";
 import { UserModel } from "../models/userModel.js";
 import { hashPassword } from "../services/passwordService.js";
 
+// this is only run once to create a development user for testing purposes
 async function createDevUser(): Promise<void> {
     const email = process.env.DEV_USER_EMAIL?.trim().toLowerCase();
     const password = process.env.DEV_USER_PASSWORD;

@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 
+//ensures versionId is a positive integer
 export const validateVersionNumber: RequestHandler = (req, res, next) => {
     const versionNumber = Number(req.params.versionId);
 

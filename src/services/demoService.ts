@@ -3,14 +3,17 @@ import { DemoVersionModel } from "../models/demoVersionModel.js";
 import { CommentModel } from "../models/commentModel.js";
 import { unlink } from "node:fs/promises";
 
+//gets all demos in the database
 export async function getAllDemos() {
     return await DemoModel.find();
 }
 
+//gets a specific demo by its ID
 export async function getDemoById(id: string) {
     return await DemoModel.findById(id);
 }
 
+//gets all demos that a specific user has created
 export async function createDemo(title: string, description: string, userId: string, bandId: string, tempo?: number, key?: string) {
     const demo = new DemoModel({
         title,
@@ -30,6 +33,7 @@ export async function createDemo(title: string, description: string, userId: str
     return await demo.save();
 }
 
+//deletes a specific demo by its ID, along with all of its versions and comments
 export async function deleteDemo(id: string) {
     const demo = await DemoModel.findById(id);
 
@@ -57,4 +61,15 @@ export async function deleteDemo(id: string) {
     }
 
     return true;
+}
+
+//creates a new version of a specific demo with the given audio file path and change note
+export async function removeUpload(audioPath?: string) {
+    if (!audioPath) return;
+
+    try {
+        await unlink(audioPath);
+    } catch (error) {
+        console.error("Could not remove uploaded audio");
+    }
 }

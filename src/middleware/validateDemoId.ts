@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 import { isObjectIdOrHexString } from "mongoose";
 
+//ensures demoId is a valid ObjectId or hex string
 export const validateDemoId: RequestHandler = (req, res, next) => {
     const demoId = req.params.id;
 

@@ -1,10 +1,12 @@
 import { DemoVersionModel } from "../models/demoVersionModel.js";
 import { getDemoById } from "./demoService.js";
 
+//gets all versions for a specific demo
 export async function getVersionsByDemoId(demoId: string) {
     return await DemoVersionModel.find({ demoId }).sort({versionNumber:1})
 }
 
+//gets a specific version of a demo by its demo ID and version number
 export async function getVersionById(
     demoId: string,
     versionNumber: number
@@ -15,6 +17,7 @@ export async function getVersionById(
     });
 }
 
+//creates a new version of a specific demo with the given audio file path and change note
 export async function createDemoVersion(
     demoId: string,
     audioPath: string,

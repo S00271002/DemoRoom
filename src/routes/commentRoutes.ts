@@ -7,8 +7,14 @@ import { validateDemoId } from "../middleware/validateDemoId.js";
 
 const router = Router({ mergeParams: true });
 
-router.post<{ id: string, versionId: string }>("/", validateDemoId, validateVersionNumber, async (req, res) => {
-    const versionId = Number(req.params.versionId);
+
+// base route is "/api/comments/:id/:versionId"
+
+//creates a new comment for a specific version of a demo
+router.post<{ id: string, versionId: string }>
+    ("/", validateDemoId, validateVersionNumber, async (req, res) => {
+
+    const versionId = Number(req.params.versionId); //version id is passed in the url - have to convert to a number for validation
     const demoId = req.params.id;
     const version = await getVersionById(demoId, versionId);
 
@@ -18,8 +24,8 @@ router.post<{ id: string, versionId: string }>("/", validateDemoId, validateVers
         });
     }
 
-    const result = commentSchema.safeParse(req.body);
-
+    const result = commentSchema.safeParse(req.body); //ensures the comment is valid according to the schema
+    
     if (!result.success) {
         return res.status(400).json({
             message: "Invalid comment",
@@ -27,7 +33,7 @@ router.post<{ id: string, versionId: string }>("/", validateDemoId, validateVers
         });
     }
 
-    const { text } = result.data;
+    const { text: commentText } = result.data;
     const userId = process.env.DEV_USER_ID;
 
     if (!userId) {
@@ -36,10 +42,11 @@ router.post<{ id: string, versionId: string }>("/", validateDemoId, validateVers
         });
     }
 
-    const comment = await createComment(version._id.toString(), userId, text);
-    res.status(201).json(comment);
+    const comment = await createComment(version._id.toString(), userId, commentText); //creates the comment
+    res.status(201).json(comment); //sends the created comment back to the client
 });
 
+//gets all comments for a specific version of a demo
 router.get<{ id: string, versionId: string }>("/", validateDemoId, validateVersionNumber, async (req, res) => {
     const versionId = Number(req.params.versionId);
     const demoId = req.params.id;
