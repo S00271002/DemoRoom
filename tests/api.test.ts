@@ -12,6 +12,7 @@ const services = vi.hoisted(() => ({
     getDemoById: vi.fn(),
     createDemo: vi.fn(),
     deleteDemo: vi.fn(),
+    removeUpload: vi.fn(),
     createDemoVersion: vi.fn(),
     getBandById: vi.fn()
 }));
@@ -20,6 +21,7 @@ vi.mock("../src/services/demoService.js", () => ({
     getAllDemos: services.getAllDemos,
     getDemoById: services.getDemoById,
     createDemo: services.createDemo,
+    removeUpload: services.removeUpload,
     deleteDemo: services.deleteDemo
 }));
 
@@ -37,9 +39,11 @@ const testDirectory = mkdtempSync(path.join(tmpdir(), "demoroom-tests-"));
 process.chdir(testDirectory);
 
 const demoRoutes = (await import("../src/routes/demoRoutes.js")).default;
+const versionRoutes = (await import("../src/routes/versionRoutes.js")).default;
 const app = express();
 app.use(express.json());
 app.use("/api/demos", demoRoutes);
+app.use("/api/demos/:id/versions", versionRoutes);
 app.use(errorHandler);
 
 const demoId = "507f1f77bcf86cd799439011";
@@ -161,5 +165,22 @@ describe("Demo CRUD", () => {
         const response = await request(app).delete(`/api/demos/${missingId}`);
 
         expect(response.status).toBe(404);
+    });
+});
+
+describe("Version upload", () => {
+    it("creates a version with an MP3 and change note", async () => {
+        const response = await request(app).post(`/api/demos/${demoId}/versions`)
+            .field("changeNote", "Added chorus")
+            .attach("audio", Buffer.from("ID3 test fixture"), "take.MP3")
+            .timeout({ deadline: 2000 });
+
+        expect(response.status).toBe(201);
+        expect(response.body.versionNumber).toBe(1);
+        expect(services.createDemoVersion).toHaveBeenCalledWith(
+            demoId,
+            expect.stringMatching(/\.mp3$/),
+            "Added chorus"
+        );
     });
 });

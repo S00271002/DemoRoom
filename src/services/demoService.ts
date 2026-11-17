@@ -63,7 +63,7 @@ export async function deleteDemo(id: string) {
     return true;
 }
 
-//creates a new version of a specific demo with the given audio file path and change note
+// removes audio file when error occurs during a method
 export async function removeUpload(audioPath?: string) {
     if (!audioPath) return;
 

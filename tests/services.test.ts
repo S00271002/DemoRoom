@@ -50,6 +50,7 @@ beforeEach(() => {
     vi.mocked(unlink).mockResolvedValue(undefined);
 });
 
+
 describe("Demo services", () => {
     it("creates version 1 and makes it the current recording", async () => {
         const version = await createDemoVersion(demoId, "uploads/first.mp3", "Initial version");

@@ -28,8 +28,8 @@ export const audioUpload = multer({
 
         if (extension !== ".mp3") {
             return callback(new Error("Please upload an MP3 file")); 
-
-            callback(null, true);
         }
+
+        callback(null, true);
     }, 
 })
